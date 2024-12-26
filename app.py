@@ -1,6 +1,7 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response
 import os
 from g4f.client import Client
+import time 
 
 # Initialize the client
 client = Client()
@@ -37,11 +38,17 @@ def prompt(input_text):
             model="gpt-3.5-turbo",  # Replace with a valid model name
             messages=[
                 {"role": "user", "content": full_input}
-            ]
+            ],
+            stream=True,  # This is for streaming
         )
-        return response.choices[0].message.content
+        
+        # Generate the response in chunks and stream to the client
+        for chunk in response:
+            if chunk.choices[0].delta.content:
+                yield chunk.choices[0].delta.content  # Yield each part of the response
+
     except Exception as e:
-        return f"Error generating response: {str(e)}"
+        yield f"Error generating response: {str(e)}"
 
 # Create a Flask app instance
 app = Flask(__name__)
@@ -49,16 +56,21 @@ app = Flask(__name__)
 @app.route('/chat', methods=['POST'])
 def get_speech():
     try:
+        start_time = time.time()
+
         data = request.get_json()
         if not data or 'text' not in data:
-            return jsonify({'error': 'error : input missing'}), 400
+            return jsonify({'error': 'Error: input missing'}), 400
         
         user_input = data['text']
-        answer = prompt(user_input)
-        return jsonify({'answer': answer})
+        
+        # Stream the response back to the client using Flask's Response object
+        return Response(prompt(user_input), content_type='text/plain;charset=utf-8', status=200)
+    
     except Exception as e:
         return jsonify({'error': f"An unexpected error occurred: {str(e)}"}), 500
 
 # Run the Flask app
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
+
