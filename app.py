@@ -85,9 +85,9 @@ def get_speech():
         if audio_stream:
             # Return audio stream to the client
             audio_stream.seek(0)
-            return send_file(audio_stream, mimetype='audio/wav', as_attachment=True, download_name="speech.wav")
+            return send_file(audio_stream, mimetype='audio/wav', as_attachment=True, download_name="speech.wav") + input_to_speech
         else:
-            return jsonify({"error": "Error generating speech"}), 500
+            return jsonify({"error": "Error generating speech"}), 500 + input_to_speech
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
